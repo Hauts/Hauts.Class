@@ -1,5 +1,5 @@
 ﻿// Hauts.Class
-// 09.10.2015
+// 13.10.2015
 // Hauts
 // https://github.com/Hauts/Hauts.Class
 ;(function( factory ){
@@ -100,16 +100,25 @@
 
 		// superClass magic starts here
 		var superClassInAction = false;
+		var baseSuperClass;
 
 		function createSuperClass( instance, createSuperClassTo, parentClass ){
 			var superClassCalled = false;
 			var superClass = function(){
 				if(!superClassCalled){
 					superClassCalled = true;
-					var origSuperClass = instance.superClass;
-					instance.superClass = createSuperClassTo.superClass.superClass;
-						parentClass.apply( instance, arguments );
-					instance.superClass = origSuperClass;
+
+					var skipRestore = superClassInAction;
+					superClassInAction = true;
+
+						var origSuperClass = instance.superClass;
+						instance.superClass = createSuperClassTo.superClass.superClass;
+							parentClass.apply( instance, arguments );
+						instance.superClass = origSuperClass;
+
+					if(!skipRestore){
+						superClassInAction = false;
+					}
 				}
 				return superClass;
 			}
@@ -119,15 +128,22 @@
 
 		function generateSuperClassProperty( instance ){
 			function wrapMethod( method, replaceSuperClass, methodName ){
-				return function(){
+				var wrapper = function(){
+					var skipRestore = superClassInAction;
 					superClassInAction = true;
+
 						var currentSuperClass = instance.superClass;
 						instance.superClass = replaceSuperClass;
 							var result = method.apply( instance, arguments );
 						instance.superClass = currentSuperClass;
-					superClassInAction = false;
+
+					if(!skipRestore){
+						superClassInAction = false;
+					}
 					return result;
 				}
+				wrapper.isInherited = method.isInherited;
+				return wrapper;				
 			}
 			function wrapSuperClassMethods( holder, superClassPrototype, replaceContext ){
 				for(var i in superClassPrototype){
@@ -150,33 +166,39 @@
 			for(var k=totalSuperClasses-1; k>=0; k--){
 				wrapSuperClassMethods( superClasses[k], structure[k].prototype, superClasses[k-1] );
 			}
-			instance.superClass = superClasses[totalSuperClasses-1];	
+			instance.superClass = superClasses[totalSuperClasses-1] || new function(){}; // ?
+			baseSuperClass = superClasses[totalSuperClasses-1];
 		}
 
 		function wrapInnerClassMethods( instance ){
-			function wrapInnerClassMethod( method, context, baseSuperClass ){
-				return function(){
+			function wrapInnerClassMethod( method, context ){
+				if(method.isWrapper){
+					return method;
+				}
+				var wrapper = function(){
 					if(superClassInAction){
 						context.superClass = baseSuperClass;
 					}
 					return method.apply(context, arguments);
 				}
-			}			
-			var superClass = instance.superClass;
+				wrapper.isWrapper = true;
+				wrapper.isInherited = method.isInherited;
+				return wrapper;
+			}
 			for(var i in instance){
 				if( !testReserved( i ) ){
 					var prop = instance[i];
 					if(typeof prop == FN){
-						instance[i] = wrapInnerClassMethod( prop, instance, superClass );
+						instance[i] = wrapInnerClassMethod( prop, instance );
 					}
 				}
 			}
 		}
-
 		// Create classWrapper
 		var classWrapper = function(){
 			if(!INNER_INITIALIZATION){
 				generateSuperClassProperty( this );
+				wrapInnerClassMethods( this );
 				classConstructor.apply( this, arguments );
 				wrapInnerClassMethods( this );
 				return this;
@@ -205,13 +227,16 @@
 
 		// Overwrite with new classPrototype object props
 		copy( classPrototype, classWrapper.prototype )
-
-		for(var i in classWrapper.prototype){
-			if( !testReserved( i ) ){
-				var prop = classWrapper.prototype[i];
-				if(typeof prop == FN){
-					if(!Object.prototype.hasOwnProperty.call(classPrototype,i)){
-						classWrapper.prototype[i] = eval('('+FN+'(){'+RT+' '+FN+'(){'+RT+' '+TH+'.'+SC+'.'+i+'.apply('+TH+',arguments);}})()');
+		
+		if(parentClass != DUMMY){
+			for(var i in classWrapper.prototype){
+				if( !testReserved( i ) ){
+					var prop = classWrapper.prototype[i];
+					if(typeof prop == FN){
+						if(typeof classPrototype[i] == UN){
+							classWrapper.prototype[i] = eval('('+FN+'(){'+RT+' '+FN+'(){'+RT+' '+TH+'.'+SC+'.'+i+'.apply('+TH+',arguments);}})()');
+							classWrapper.prototype[i].isInherited = true;
+						}
 					}
 				}
 			}

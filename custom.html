@@ -1,0 +1,49 @@
+﻿<!DOCTYPE html>
+<html>
+<head>
+	<meta charset='utf-8'>
+	<script src='hauts.class.js'></script>
+	<script>
+
+		var Class = Hauts.Class;
+
+		var A = Class('A', function(){
+			console.log('A constructor')
+			this.setFPS(10)
+		}, {
+			setFPS: function( fps ){
+				this._fps = fps;
+				console.log('A set fps')
+			}
+		})
+
+		var B = A.extend('B', function(){
+			console.log('B constructor')
+			this.superClass();
+			this.setFPS(20)
+		}, {
+			setFPS: function( fps ){
+				this._fps = fps;
+				console.log('B set fps')
+				this.superClass.setFPS(30)
+			}
+		})
+
+		var C = B.extend('C', function(){
+			console.log('C constructor')
+			this.superClass();
+
+			console.log(':: ' + this._fps)
+		}, {
+			setFPS: function( fps ){
+				this._fps = fps;
+				console.log('C set fps')
+				this.superClass.setFPS(40)
+			}
+		})
+
+		c = new C();
+	</script>
+</head>
+	<body></body>
+</html>

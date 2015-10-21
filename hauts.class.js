@@ -1,7 +1,8 @@
 ﻿// Hauts.Class
-// 13.10.2015
+// 21.10.2015
 // Hauts
 // https://github.com/Hauts/Hauts.Class
+'use strict';
 ;(function( factory ){
 	factory.Hauts = factory.Hauts || new (function Hauts(){})();
 	var Hauts = factory.Hauts;
@@ -27,24 +28,28 @@
 		USE_DEEP_MODE = true,
 		USE_EVAL = true,
 
+		ALL_CLASSES = [],
+
 		CLASS_COUNTER = 0,
-		INNER_INITIALIZATION = false
-
-	var Class = function(className, classConstructor, classPrototype, staticProperties, useDeepMode){
-		return Class.create( className, classConstructor, classPrototype, staticProperties, useDeepMode );
-	}
-	Class.create = function(className, classConstructor, classPrototype, staticProperties, useDeepMode){
-		return Class.extend( null, className, classConstructor, classPrototype, staticProperties, useDeepMode );
-	}
-
-	Class.useDeepMode = function( state ){
-		if(typeof state != UN){ USE_DEEP_MODE = !!state; }
-		return USE_DEEP_MODE;
-	}
+		INNER_INITIALIZATION = false;
 
 	// Internal helpers
+	function isSet( object ){ return typeof object != UN && object != null }
+	function isFunction( object ){ return typeof object == FN; }
+	function isObject( object ){ return typeof object == OB; }
+	function isString( object ){ return typeof object == ST; }
+
+	function argumentsToArray(args){
+		var argumentsLength = args.length;
+		var argsArray = new Array(argumentsLength);
+		for(var k=0; k<argumentsLength; k++){
+			argsArray[k] = args[k];
+		}
+		return argsArray;	
+	}
+
 	function copy( from, to ){ for(var i in from){ to[i] = from[i]; } }
-	function testReserved( name ){ return name==SC || name==EX || name==IO || name==CN; }
+	function testReserved( name ){ return name==SC || name==EX || name==IO || name==CN;}
 	function createName(){ return CLASS_NAME_PREFIX + (++CLASS_COUNTER); }
 	function createClassStructure( instance ){
 		var structure = [];
@@ -60,41 +65,53 @@
 		return structure;
 	}
 
+	var Class = function(className, classConstructor, classPrototype, staticProperties, useDeepMode){
+		return Class.create( className, classConstructor, classPrototype, staticProperties, useDeepMode );
+	}
+	Class.create = function(className, classConstructor, classPrototype, staticProperties, useDeepMode){
+		return Class.extend( null, className, classConstructor, classPrototype, staticProperties, useDeepMode );
+	}
+
+	Class.useDeepMode = function( state ){
+		if(isSet(state)){ USE_DEEP_MODE = !!state; }
+		return USE_DEEP_MODE;
+	}
+
 	Class.extend = function( parentClass, className, classConstructor, classPrototype, staticProperties, useDeepMode ){
+		
+		parentClass = isFunction(parentClass) ? parentClass : DUMMY;
 
-		parentClass = typeof parentClass != FN ? DUMMY : parentClass;
-
-		if(typeof className == FN){
+		if(isFunction(className)){
 			staticProperties = classPrototype;
 			classPrototype = classConstructor;
 			classConstructor = className;
 			className = createName();
 
-		} else if(typeof className == ST){
-			if(typeof classConstructor != FN){
+		} else if(isString(className)){
+			if(!isFunction(classConstructor)){
 				staticProperties = classPrototype;
 				classPrototype = classConstructor;
 				classConstructor = DUMMY;
 			}
-		} else if(typeof className == OB){
+		} else if(isObject(className)){
 			staticProperties = classPrototype;
 			classPrototype = className;
-			classConstructor = DUMMY;//function(){};
+			classConstructor = DUMMY;
 			className = createName();
 
-		} else if( typeof className == UN){
+		} else if( !isSet(className)){
 			className = createName();
 		}
 
-		if(typeof classConstructor == UN){
+		if( !isSet(classConstructor) ){
 			classConstructor = DUMMY;
 		} else {
-			if(typeof classConstructor != FN){
+			if(!isFunction(classConstructor)){
 				throw new Error('classConstructor must be a Function');
 			}
 		}
-		classPrototype = typeof classPrototype == UN ? EMPTY : classPrototype;
-		staticProperties = typeof staticProperties == UN ? EMPTY : staticProperties;
+		classPrototype = isSet(classPrototype) ? classPrototype : EMPTY;
+		staticProperties = isSet(staticProperties) ? staticProperties : EMPTY;
 
 		var parentClassPrototype = parentClass.prototype;
 
@@ -113,12 +130,15 @@
 
 						var origSuperClass = instance.superClass;
 						instance.superClass = createSuperClassTo.superClass.superClass;
-							parentClass.apply( instance, arguments );
+
+							for(var argumentsLength = arguments.length, args = new Array(argumentsLength), k=0; k<argumentsLength; k++){
+								args[k] = arguments[k];
+							}
+							parentClass.apply( instance, args );
+
 						instance.superClass = origSuperClass;
 
-					if(!skipRestore){
-						superClassInAction = false;
-					}
+					if(!skipRestore){ superClassInAction = false; }
 				}
 				return superClass;
 			}
@@ -134,22 +154,25 @@
 
 						var currentSuperClass = instance.superClass;
 						instance.superClass = replaceSuperClass;
-							var result = method.apply( instance, arguments );
+
+							for(var argumentsLength = arguments.length, args = new Array(argumentsLength), k=0; k<argumentsLength; k++){
+								args[k] = arguments[k];
+							}
+							var result = method.apply( instance, args );
+
 						instance.superClass = currentSuperClass;
 
-					if(!skipRestore){
-						superClassInAction = false;
-					}
+					if(!skipRestore){ superClassInAction = false; }
 					return result;
 				}
-				wrapper.isInherited = method.isInherited;
+				wrapper.isInherited = !!method.isInherited;
 				return wrapper;				
 			}
 			function wrapSuperClassMethods( holder, superClassPrototype, replaceContext ){
 				for(var i in superClassPrototype){
 					if( !testReserved( i ) ){
 						var prop = superClassPrototype[i];
-						if( typeof prop == FN ){
+						if( isFunction(prop) ){
 							holder[i] = wrapMethod( prop, replaceContext, i );
 						}
 					}
@@ -179,16 +202,19 @@
 					if(superClassInAction){
 						context.superClass = baseSuperClass;
 					}
-					return method.apply(context, arguments);
+					for(var argumentsLength = arguments.length, args = new Array(argumentsLength), k=0; k<argumentsLength; k++){
+						args[k] = arguments[k];
+					}
+					return method.apply( context, args );
 				}
 				wrapper.isWrapper = true;
-				wrapper.isInherited = method.isInherited;
+				wrapper.isInherited = !!method.isInherited;
 				return wrapper;
 			}
 			for(var i in instance){
 				if( !testReserved( i ) ){
 					var prop = instance[i];
-					if(typeof prop == FN){
+					if( isFunction(prop) ){
 						instance[i] = wrapInnerClassMethod( prop, instance );
 					}
 				}
@@ -199,8 +225,15 @@
 			if(!INNER_INITIALIZATION){
 				generateSuperClassProperty( this );
 				wrapInnerClassMethods( this );
-				classConstructor.apply( this, arguments );
+
+				for(var argumentsLength = arguments.length, args = new Array(argumentsLength), k=0; k<argumentsLength; k++){
+					args[k] = arguments[k];
+				}
+
+				classConstructor.apply( this, args );
+
 				wrapInnerClassMethods( this );
+
 				return this;
 			}
 		}
@@ -211,12 +244,12 @@
 			try{
 				classWrapper = eval(classWrapperCode);
 			} catch(e){
-				console.error('Could not eval class constructor function with source code: \n'+ classWrapperCode);
+				throw new Error('Could not eval class constructor function with source code: \n'+ classWrapperCode);
 			}
 		}
 
 		// Copy parentClass prototype
-		useDeepMode = typeof useDeepMode == UN ? USE_DEEP_MODE : !!useDeepMode;
+		useDeepMode = isSet(useDeepMode) ? !!useDeepMode : USE_DEEP_MODE;
 		if(USE_DEEP_MODE && useDeepMode){
 			INNER_INITIALIZATION = true;
 				classWrapper.prototype = new parentClass();
@@ -225,24 +258,38 @@
 			copy( parentClassPrototype, classWrapper.prototype );
 		}
 
-		// Overwrite with new classPrototype object props
-		copy( classPrototype, classWrapper.prototype )
-		
+
+		// TODO: Test here!
+		function wrapInheritedMethod( name ){
+			return function(){
+				if(superClassInAction){
+					this.superClass = baseSuperClass;
+				}
+				for(var argumentsLength = arguments.length, args = new Array(argumentsLength), k=0; k<argumentsLength; k++){
+					args[k] = arguments[k];
+				}
+				return this.superClass[name].apply(this, args);
+			}
+		}
 		if(parentClass != DUMMY){
-			for(var i in classWrapper.prototype){
+			for(var i in classPrototype){
 				if( !testReserved( i ) ){
-					var prop = classWrapper.prototype[i];
-					if(typeof prop == FN){
-						if(typeof classPrototype[i] == UN){
-							classWrapper.prototype[i] = eval('('+FN+'(){'+RT+' '+FN+'(){'+RT+' '+TH+'.'+SC+'.'+i+'.apply('+TH+',arguments);}})()');
-							classWrapper.prototype[i].isInherited = true;
+					var prop = classPrototype[i];
+					if( isFunction(prop) ){
+						if(!isSet(classPrototype[i])){
+							classPrototype[i] = wrapInheritedMethod( i );
+							classPrototype[i].isInherited = true;
 						}
 					}
 				}
 			}
 		}
 
+		// Overwrite with new classPrototype object props
+		copy( classPrototype, classWrapper.prototype );
+
 		// Add static properties
+		copy( parentClass, classWrapper );
 		copy( staticProperties, classWrapper );
 
 		classWrapper.superClass = classWrapper.prototype.superClass = parentClass;
@@ -251,7 +298,7 @@
 		classWrapper.extend = classWrapper.prototype.extend = function(className, classConstructor, classPrototype, staticProperties, useDeepMode){
 			return Class.extend(classWrapper, className, classConstructor, classPrototype, staticProperties, useDeepMode);
 		}
-
+		
 		classWrapper.instanceOf = classWrapper.prototype.instanceOf = function( testClass ){
 			if(classWrapper === testClass){
 				return true;
@@ -260,7 +307,7 @@
 				if(classWrapper.superClass === testClass){
 					return true;
 				} else {
-					if(typeof classWrapper.superClass.instanceOf == FN){
+					if(isFunction(classWrapper.superClass.instanceOf)){
 						return classWrapper.superClass.instanceOf( testClass );
 					}
 				}
@@ -268,24 +315,35 @@
 			return false;
 		}
 
-		if(Object.defineProperty){
-			Object.defineProperty(classWrapper, SC, {writable: false, value: parentClass});
-
-			var classNameProps = {writable: false, value: className};
-				Object.defineProperty(classWrapper, CN, classNameProps);
-				Object.defineProperty(classWrapper.prototype, CN, classNameProps);
-
-			var extendProps = { writable: false, value: classWrapper.extend };
-				Object.defineProperty(classWrapper, EX, extendProps);
-				Object.defineProperty(classWrapper.prototype, EX, extendProps);
-
-			var instanceOfProps = { writable: false, value: classWrapper.instanceOf };
-				Object.defineProperty(classWrapper, IO, instanceOfProps);
-				Object.defineProperty(classWrapper.prototype, IO, instanceOfProps);
+		// TODO & TEST
+		/*
+		classWrapper.prototype.isInstantiating = function(){
+			return false;
 		}
+		*/
+		ALL_CLASSES.push(classWrapper);
+
 		return classWrapper;
 	}
 
+
+	// TODO:
+	Class.isClass = function( testClass ){
+		if(!isSet(testClass)){ return false; }		
+		var counter = ALL_CLASSES.length;
+		while(counter--){
+			if(testClass === ALL_CLASSES[counter]){ return true; }
+		}
+		return false;
+	}
+
+	Class.isClassInstanceOfClass = function( testClass, testParentClass ){
+		if(!isSet(testClass)){ return false; }
+		if(!isSet(testParentClass)){ return false; }
+		if(!Class.isClass(testClass)){ return false; }
+		if(!Class.isClass(testParentClass)){ return false; }
+		return testClass.instanceOf(testParentClass);
+	}
 	// Exports
 	Hauts.Class = Class;
 })(this);

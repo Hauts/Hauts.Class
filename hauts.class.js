@@ -1,5 +1,5 @@
 ﻿// Hauts.Class
-// 21.10.2015
+// 22.10.2015
 // Hauts
 // https://github.com/Hauts/Hauts.Class
 'use strict';
@@ -39,13 +39,13 @@
 	function isObject( object ){ return typeof object == OB; }
 	function isString( object ){ return typeof object == ST; }
 
-	function argumentsToArray(args){
-		var argumentsLength = args.length;
-		var argsArray = new Array(argumentsLength);
-		for(var k=0; k<argumentsLength; k++){
-			argsArray[k] = args[k];
+	function createNamedObject( name ){ return USE_EVAL ? eval('new function ' + name+'(){}') : {}; }
+
+	function testCallback( callback, applyArguments, context ){
+		if(isFunction(callback)){
+			return callback.apply(context, applyArguments);
 		}
-		return argsArray;	
+		return null;
 	}
 
 	function copy( from, to ){ for(var i in from){ to[i] = from[i]; } }
@@ -78,7 +78,6 @@
 	}
 
 	Class.extend = function( parentClass, className, classConstructor, classPrototype, staticProperties, useDeepMode ){
-		
 		parentClass = isFunction(parentClass) ? parentClass : DUMMY;
 
 		if(isFunction(className)){
@@ -344,6 +343,107 @@
 		if(!Class.isClass(testParentClass)){ return false; }
 		return testClass.instanceOf(testParentClass);
 	}
+
+	//
+	// Define / Resolve
+	//
+	var allResolves = [],
+		allDefines = [],
+		allDefined = [];
+
+	var lastDefinedClassPath = '';
+
+	function testResolveHandlers(classPath, result){
+		for(var k=0, totalDefined = allDefined.length, totalResolves = allResolves.length;k<totalDefined;k++){
+			var definedData = allDefined[k];
+			var definedClassPath = definedData.classPath;
+			for(var j=0;j<totalResolves;j++){
+				var resolveData = allResolves[j];
+				if(!resolveData.resolved){
+					var resolveClassPath = resolveData.classPath;
+					if(resolveClassPath == definedClassPath){
+						testCallback( resolveData.handler, [definedData.result], resolveData.context );
+						resolveData.resolved = true;
+					}
+				}
+			}
+		}
+	}
+
+	function testResolveDefined(defineData){
+		var definedDependenciesCount = 0;
+		var dependencies = defineData.dependencies;
+		var totalDependencies = dependencies.length;
+		var totalDefined = allDefined.length;
+		var dependenciesArray = [];
+		for(var k=0; k<totalDependencies; k++){
+			var dependencyClassPath = dependencies[k];
+			for(var j=0; j<totalDefined; j++){
+				var defined = allDefined[j];
+				var definedClassPath = defined.classPath;
+				if(definedClassPath == dependencyClassPath){
+					definedDependenciesCount++;
+					dependenciesArray.push(defined.result);
+				}
+			}
+		}
+		if(definedDependenciesCount == totalDependencies){
+			defineData.defined = true;
+			defineData.result = defineData.targetPath[defineData.className] = testCallback( defineData.handler, dependenciesArray, null );
+			allDefined.push(defineData);
+			testResolveHandlers();
+			testResolveDefines();
+		}
+	}
+
+	function testResolveDefines(){
+		var totalDefines = allDefines.length;
+		for(var k=0; k<totalDefines; k++){
+			var defineData = allDefines[k];
+			if(!defineData.defined){
+				testResolveDefined(defineData);
+			}
+		}
+	}
+
+	Class.define = function( classPath, dependencies, handler ){
+		lastDefinedClassPath = classPath;
+
+		var clasPathArray = classPath.split('.');
+		var className = clasPathArray.pop();
+
+		if(className == ''){
+			throw new Error('Hauts.Class.define must have className argument');
+		}
+
+		var pathArrayLength = clasPathArray.length;
+		var targetPath = factory;
+		for (var k = 0; k < pathArrayLength; k++) {
+			var name = clasPathArray[k];
+			if(name != ''){
+				targetPath[name] = targetPath = targetPath[name] || createNamedObject( name );
+			}
+		}
+		allDefines.push({
+			defined: false,
+			classPath: classPath,
+			targetPath: targetPath,
+			className: className,
+			dependencies: dependencies,
+			handler: handler
+		});
+		testResolveDefines();
+	}
+	Class.resolve = function( classPath, handler, context ){
+		if(isFunction(classPath)){
+			context = handler;
+			handler = classPath;
+			classPath = lastDefinedClassPath;
+		}
+		allResolves.push({ resolved: false, classPath: classPath, handler: handler, context: context })
+		testResolveHandlers()
+	}
+
 	// Exports
 	Hauts.Class = Class;
 })(this);

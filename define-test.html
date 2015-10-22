@@ -1,0 +1,39 @@
+﻿<!DOCTYPE html>
+<html>
+<head>
+	<meta charset='utf-8'>
+	<meta name="viewport" content="width=device-width">
+	<script src='http://hauts.class/hauts.class.js'></script>
+	<script src='http://hauts.class/hauts.class.min.js'></script>
+	<script>
+		Hauts.Class.define('SuperClass', ['Hauts.utils.test.UtilsClass', 'TestClass'], function( utils, testClass ){
+			console.log('SuperClass ok')
+			console.log(utils, testClass)
+
+			return { name: 'SuperClass' }
+		})
+
+		Hauts.Class.define('Hauts.utils.test.UtilsClass', [], function(){
+			console.log('Utils ok');
+			return { name: 'Utils' }
+		})
+
+		Hauts.Class.resolve(function( lastDefined ){
+			console.log('Auto resolve last:')
+			console.log( lastDefined )
+		})
+
+		Hauts.Class.define('TestClass', ['Hauts.utils.test.UtilsClass'], function( utils ){
+			console.log('TestClass ok')
+			console.log( utils )
+			return { name: 'TestClass' }
+		})
+
+		Hauts.Class.resolve('SuperClass', function( utils ){
+			console.log('Resolve 1')
+			console.log( utils )
+		})
+	</script>
+</head>
+	<body></body>
+</html>

@@ -7,6 +7,10 @@
 	factory.Hauts = factory.Hauts || new (function Hauts(){})();
 	var Hauts = factory.Hauts;
 
+	if(isFunction(Hauts.Class)){
+		return;
+	}
+
 	// Short strings
 	var FN = 'function',
 		UN = 'undefined',
@@ -353,7 +357,7 @@
 
 	var lastDefinedClassPath = '';
 
-	function testResolveHandlers(classPath, result){
+	function testResolveHandlers(){
 		for(var k=0, totalDefined = allDefined.length, totalResolves = allResolves.length;k<totalDefined;k++){
 			var definedData = allDefined[k];
 			var definedClassPath = definedData.classPath;

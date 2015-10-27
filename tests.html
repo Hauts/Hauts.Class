@@ -13,39 +13,29 @@
 		<div id='mocha'></div>
 
 		<script>
-
 		var Class = Hauts.Class;
-
 		mocha.setup('bdd');
 		var assert = chai.assert;
-
-
 		describe('Creating Class', function() {	
 			it('#1', function(){
 				// Unnamed class without props & methods
 				var myClass = Class();
 				var instance = new myClass();
-
 				assert.notEqual( typeof instance, 'undefined');
 			});
-
 			it('#2', function(){
 				// Unnamed class with props & methods
 				var myClass = Class();
 				var instance = new myClass();
-
 				assert.notEqual( typeof instance, 'undefined');
 			});
-
 			it('#3', function(){
 				// Named class with props & methods
 				var myClass = Class('ClassName');
 				var instance = new myClass();
-
 				assert.notEqual( typeof instance, 'undefined');
 			});
 		});
-
 		describe('Calling methods', function() {
 			it('#4', function(){
 				var Animal = Class('Animal', function (name){
@@ -55,63 +45,46 @@
 						return 'Animal ' + this.name + ' says hello!';
 					}
 				});
-
 				var myAnimal = new Animal('Mikky');
 				var result = myAnimal.sayHello();
-
 				assert.equal( result, 'Animal Mikky says hello!');
 			});
 		});
-
 		describe('Working with inheritance', function() {
 			it('#5', function(){
 				// Simply unnamed SubClass extends unnamed BaseClass
 				var BaseClass = Class();
 				var SubClass = BaseClass.extend();
-
 				var instance = new SubClass();
-
 				assert.notEqual( typeof instance, 'undefined');
 				assert.equal( SubClass.superClass, BaseClass);
 			});
-
 			it('#6', function(){
 				// Named classes inheritance
 				var BaseClass = Class('BaseClass');
 				var SubClass = BaseClass.extend('SubClass');
-
 				var instance = new SubClass();
-
 				assert.notEqual( typeof instance, 'undefined');
-
 				assert.equal( SubClass.superClass, BaseClass);
 				assert.equal( SubClass.superClass.className, 'BaseClass');
 			});
-
 			it('#7', function(){
 				// Alternative way using Class.extend method
 				var BaseClass = Class('BaseClass');
 				var SubClass = Class.extend(BaseClass);
-
 				var instance = new SubClass();
-
 				assert.notEqual( typeof instance, 'undefined');
 				assert.equal( SubClass.superClass, BaseClass);
 				assert.equal( SubClass.superClass.className, 'BaseClass');
 			});
-
 			it('#8', function(){
 				// Also may extend 'hand-made' classes
 				function SomeFunction(){}
 				SomeFunction.prototype.someProperty = 123;
-
 				var SubClass = Class.extend(SomeFunction);
-
 				var instance = new SubClass();
-
 				assert.equal( instance.someProperty, 123);
 			});
-
 			it('#9', function(){
 				var BaseClass = Class(function(){
 					this.someProperty = 1;
@@ -119,12 +92,9 @@
 				var SubClass = BaseClass.extend(function(){
 					this.superClass();
 				});
-
 				var instance = new SubClass();
-
 				assert.equal( instance.someProperty, 1 );
 			});
-
 			it('#10', function(){
 				var BaseClass = Class(function (value){
 					this.someProperty = value;
@@ -132,12 +102,9 @@
 				var SubClass = BaseClass.extend(function(){
 					this.superClass(10);
 				});
-
 				var instance = new SubClass();
-
 				assert.equal( instance.someProperty, 10 );		
 			});
-
 			it('#11', function(){
 				var BaseClass = Class({
 					test: function(){
@@ -147,12 +114,9 @@
 				var SubClass = BaseClass.extend(function(){
 					this.superClass.test();
 				});
-
 				var instance = new SubClass();
-
 				assert.equal( instance.someProperty, 100 );	
 			});
-
 			it('#12', function(){
 				var A = Class({
 					test: function(){
@@ -179,13 +143,10 @@
 						return this.superClass.test() + 'E';
 					}
 				});
-
 				var instance = new E();
 				var result = instance.test();
-
 				assert.equal( result, 'ABCDE' );
 			});
-
 			it('#12x2', function(){
 				var A = Class({
 					test: function(){
@@ -200,57 +161,42 @@
 						return this.superClass.test() + 'E';
 					}
 				});
-
 				var instance = new E();
 				var result = instance.test();
-
 				assert.equal( result, 'AE' );
 			});
 		});
-
 		describe('Working with instanceof', function() {
 			it('#13', function(){
 				var A = Class();
 				var B = A.extend();
-
 				var instance = new B();
-
 				assert.equal( instance instanceof A, true );
 				assert.equal( instance instanceof B, true );
 			});
-
 			it('#14', function(){
 				var A = Class();
 				var B = A.extend();
 				var C = B.extend();
-
 				var instance = new C();
-
 				assert.equal( instance instanceof A, true );
 				assert.equal( instance instanceof B, true );
 				assert.equal( instance instanceof C, true );
 			});
-
 			it('#15', function(){
 				var A = function(){}
 				var B = Class.extend(A);
-
 				var instance = new B();
-
 				assert.equal( instance instanceof A, true );
 				assert.equal( instance instanceof B, true );
 			});
-
 			it('#16', function(){
 				var launched = false;
-
 				var A = function(){
 					launched = true;
 				}
 				var B = Class.extend(A, function(){}, null, null, true);
-
 				var instance = new B();
-
 				assert.equal( launched, true );
 				assert.equal( instance instanceof A, true );
 				assert.equal( instance instanceof B, true );
@@ -258,53 +204,43 @@
 		});
 		
 		describe('Working with instanceof', function() {
-
 			Class.useDeepMode( true );
-
 			it('#17 Class instanceOf', function(){
 				var A =    Class();
 				var B = A.extend();
 				var C = B.extend();
 				var D = C.extend();
 				var E = D.extend();
-
 				assert.equal( A.instanceOf(Object), true );
 				assert.equal( B.instanceOf(Object), true );
 				assert.equal( C.instanceOf(Object), true );
 				assert.equal( D.instanceOf(Object), true );
 				assert.equal( E.instanceOf(Object), true );
-
 				assert.equal( A.instanceOf(Object), true );
 				assert.equal( B.instanceOf(A), true );
 				assert.equal( C.instanceOf(A), true );
 				assert.equal( D.instanceOf(A), true );
 				assert.equal( E.instanceOf(A), true );
-
 				assert.equal( E.instanceOf(Object), true );	
 				assert.equal( E.instanceOf(A), true );	
 				assert.equal( E.instanceOf(B), true );	//
 				assert.equal( E.instanceOf(C), true );	
 				assert.equal( E.instanceOf(D), true );	
-
 				assert.equal( E.instanceOf(Math), false );			
 			});
-
 			it('#18 Class instance instanceOf', function(){
 				var A =    Class();
 				var B = A.extend();
 				var C = B.extend();
 				var D = C.extend();
 				var E = D.extend();
-
 				var instance = new E();
-
 				assert.equal( instance.instanceOf(Object), true );
 				assert.equal( instance.instanceOf(A), true );
 				assert.equal( instance.instanceOf(B), true );
 				assert.equal( instance.instanceOf(C), true );
 				assert.equal( instance.instanceOf(D), true );
 				assert.equal( instance.instanceOf(E), true );
-
 				assert.equal( instance.instanceOf(Math), false );
 			});			
 		});

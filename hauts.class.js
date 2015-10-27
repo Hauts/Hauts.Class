@@ -1,5 +1,5 @@
 ﻿// Hauts.Class
-// 22.10.2015
+// 27.10.2015
 // Hauts
 // https://github.com/Hauts/Hauts.Class
 'use strict';
@@ -392,6 +392,9 @@
 			}
 		}
 		if(definedDependenciesCount == totalDependencies){
+
+			//console.log(' + Resolved ' + defineData.classPath );
+
 			defineData.defined = true;
 			defineData.result = defineData.targetPath[defineData.className] = testCallback( defineData.handler, dependenciesArray, null );
 			allDefined.push(defineData);
@@ -411,19 +414,25 @@
 	}
 
 	Class.define = function( classPath, dependencies, handler ){
+
+		//console.log('Added definition: ' + classPath );
+
 		lastDefinedClassPath = classPath;
 
-		var clasPathArray = classPath.split('.');
-		var className = clasPathArray.pop();
+		var classPathArray = classPath.split('.');
+		var className = classPathArray.pop();
 
 		if(className == ''){
 			throw new Error('Hauts.Class.define must have className argument');
 		}
-
-		var pathArrayLength = clasPathArray.length;
+		if(isFunction(dependencies)){
+			handler = dependencies;
+			dependencies = [];
+		}
+		var pathArrayLength = classPathArray.length;
 		var targetPath = factory;
 		for (var k = 0; k < pathArrayLength; k++) {
-			var name = clasPathArray[k];
+			var name = classPathArray[k];
 			if(name != ''){
 				targetPath[name] = targetPath = targetPath[name] || createNamedObject( name );
 			}

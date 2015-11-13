@@ -1,17 +1,18 @@
-﻿// Hauts.Class
-// 27.10.2015
-// Hauts
-// https://github.com/Hauts/Hauts.Class
-'use strict';
+﻿/*!
+ * Hauts.Class
+ *
+ * Copyright 2015 Michael Chistyakov | Hauts | http://hauts.com
+ *
+ * https://github.com/Hauts/Hauts.Class
+ */
 ;(function( factory ){
-	factory.Hauts = factory.Hauts || new (function Hauts(){})();
-	var Hauts = factory.Hauts;
+	'use strict';
 
-	if(isFunction(Hauts.Class)){
-		return;
-	}
-
+	//
 	// Short strings
+	//
+	var VERSION = '1.17 [13.11.2015]';
+
 	var FN = 'function',
 		UN = 'undefined',
 		CN = 'className',
@@ -30,28 +31,110 @@
 
 		// Inner settings
 		USE_DEEP_MODE = true,
-		USE_EVAL = true,
+		USE_EVAL = false,
 
 		ALL_CLASSES = [],
 
 		CLASS_COUNTER = 0,
 		INNER_INITIALIZATION = false;
 
+	//
+	// Logging vars
+	//
+	var IS_IN_NODE = !!(typeof module !== UN && module.exports);
+
+	var DEBUG = false;
+
+	var LOG_VERSION = false,
+		LOG_OK = true,
+		LOG_TESTED = false,
+		LOG_CACHED = [],
+		LOG_PREFIX = 'Hauts.Class: '
+
+	var TAB = '\t';
+
+	var BROWSER_STYLE_POSTFIX = 'font-size:11px;font-style:italic;';
+
+	// https://coderwall.com/p/yphywg/printing-colorful-text-in-terminal-when-run-node-js-script
+	var NODE_STYLE_POSTFIX = '%s\x1b[0m';
+	var NODE_STYLE_PREFIX = '\x1b';
+	var LOG_STYLES = {
+		LOG:	[ NODE_STYLE_PREFIX + '[1m'  + NODE_STYLE_POSTFIX, 'color:#999999;' + BROWSER_STYLE_POSTFIX ],
+		ERROR:	[ NODE_STYLE_PREFIX + '[31m' + NODE_STYLE_POSTFIX, 'color:#FF0000;' + BROWSER_STYLE_POSTFIX ],
+		WARN:	[ NODE_STYLE_PREFIX + '[43m' + NODE_STYLE_POSTFIX, 'color:#FF7700;' + BROWSER_STYLE_POSTFIX ],
+		MARK:	[ NODE_STYLE_PREFIX + '[42m' + NODE_STYLE_POSTFIX, 'color:#009900;' + BROWSER_STYLE_POSTFIX ]
+	}
+
+	// Use styling only in chrome browser
+	var USE_STYLING = !!(typeof window !== UN && window.chrome);
+
+	function nativeLog( message, style ){
+		IS_IN_NODE ? console.log(style[0], message ) : (USE_STYLING ? console.log('%c' + message, style[1] ) : console.log(message) );
+	}
+
+	function logStyled( message, style, tabs ){
+		if(LOG_OK){
+			if(DEBUG){
+				tabs = isSet(tabs) ? tabs : 0;
+				var tabsString = '';
+				while( tabs --){ tabsString += TAB; }
+
+				if(LOG_TESTED){
+					nativeLog(tabsString + LOG_PREFIX + message, style );
+				} else {
+					try{
+						nativeLog(tabsString + LOG_PREFIX + message, style );
+					} catch(e){ LOG_OK = false; }
+					LOG_TESTED = true;				
+				}
+			} else {
+				LOG_CACHED.push( [message, style] );
+			}
+		}
+	}
+
+	//
+	// Inner log methods
+	//
+	function log	( message, tabs ){ return logStyled(message, LOG_STYLES.LOG, tabs );	}
+	function error	( message, tabs ){ return logStyled(message, LOG_STYLES.ERROR, tabs );	}
+	function warn	( message, tabs ){ return logStyled(message, LOG_STYLES.WARN, tabs );	}
+	function mark	( message, tabs ){ return logStyled(message, LOG_STYLES.MARK, tabs );	}
+
+	function logVersion(){
+		if(LOG_VERSION){ return; }
+		LOG_VERSION = true;
+		mark('v.' + VERSION + '\n' + '\n');
+	}
+
+	function logCached(){
+		var totalCached = LOG_CACHED.length;
+		if(totalCached > 0){
+			log('// Start of cached', 0);
+			for(var k=0;k<totalCached; k++){
+				var cached = LOG_CACHED[k];
+				logStyled( cached[0], cached[1], 1 );
+			}
+			LOG_CACHED = [];
+			log('// End of cached', 0);
+		}
+	}
+
+	//
 	// Internal helpers
+	//
 	function isSet( object ){ return typeof object != UN && object != null }
 	function isFunction( object ){ return typeof object == FN; }
 	function isObject( object ){ return typeof object == OB; }
 	function isString( object ){ return typeof object == ST; }
-
-	function createNamedObject( name ){ return USE_EVAL ? eval('new function ' + name+'(){}') : {}; }
-
+	function isArray(object){ return Object.prototype.toString.call(object) === '[object Array]'; }
+	function createNamedObject( name ){ return USE_EVAL ? eval('new function ' + name+'(){}') : new (function(){})(); }
 	function testCallback( callback, applyArguments, context ){
 		if(isFunction(callback)){
 			return callback.apply(context, applyArguments);
 		}
 		return null;
 	}
-
 	function copy( from, to ){ for(var i in from){ to[i] = from[i]; } }
 	function testReserved( name ){ return name==SC || name==EX || name==IO || name==CN;}
 	function createName(){ return CLASS_NAME_PREFIX + (++CLASS_COUNTER); }
@@ -76,11 +159,29 @@
 		return Class.extend( null, className, classConstructor, classPrototype, staticProperties, useDeepMode );
 	}
 
+	//
+	// Settings
+	//
 	Class.useDeepMode = function( state ){
 		if(isSet(state)){ USE_DEEP_MODE = !!state; }
 		return USE_DEEP_MODE;
 	}
+	Class.useEval = function( state ){
+		if(isSet(state)){ USE_EVAL = !!state; }
+		return USE_EVAL;
+	}	
+	Class.debug = function( state ){
+		if( isSet(state) ){ DEBUG = !!state; }
+		if( DEBUG ){ logVersion(); logCached(); }
+		return DEBUG;
+	}
+	Class.toggleDebug = function(){
+		return Class.debug(!Class.debug());
+	}	
 
+	//
+	// Core
+	//
 	Class.extend = function( parentClass, className, classConstructor, classPrototype, staticProperties, useDeepMode ){
 		parentClass = isFunction(parentClass) ? parentClass : DUMMY;
 
@@ -115,6 +216,8 @@
 		}
 		classPrototype = isSet(classPrototype) ? classPrototype : EMPTY;
 		staticProperties = isSet(staticProperties) ? staticProperties : EMPTY;
+
+		log('Creating Class ' + className )
 
 		var parentClassPrototype = parentClass.prototype;
 
@@ -325,12 +428,12 @@
 		}
 		*/
 		ALL_CLASSES.push(classWrapper);
-
 		return classWrapper;
 	}
 
-
-	// TODO:
+	//
+	// Utils
+	//
 	Class.isClass = function( testClass ){
 		if(!isSet(testClass)){ return false; }		
 		var counter = ALL_CLASSES.length;
@@ -349,114 +452,260 @@
 	}
 
 	//
-	// Define / Resolve
+	// Define / Resolve extra methods
 	//
-	var allResolves = [],
-		allDefines = [],
-		allDefined = [];
-
-	var lastDefinedClassPath = '';
+	var emptyDefines = [];
+	var emptyResolves = [];
+	var allResolves = []
+	var allDefines = [];
+	var lastDefinedObjectPath = '';
 
 	function testResolveHandlers(){
-		for(var k=0, totalDefined = allDefined.length, totalResolves = allResolves.length;k<totalDefined;k++){
-			var definedData = allDefined[k];
-			var definedClassPath = definedData.classPath;
-			for(var j=0;j<totalResolves;j++){
-				var resolveData = allResolves[j];
-				if(!resolveData.resolved){
-					var resolveClassPath = resolveData.classPath;
-					if(resolveClassPath == definedClassPath){
-						testCallback( resolveData.handler, [definedData.result], resolveData.context );
-						resolveData.resolved = true;
+		emptyResolves = [];
+
+		var totalResolves = allResolves.length,
+			totalDefines = allDefines.length;
+
+		for(var k=0;k<totalResolves;k++){
+			var testResolveData = allResolves[k];
+			if(testResolveData && !testResolveData.resolved){
+				var emptyDependencies = [];
+
+				var dependencies = testResolveData.dependencies,
+					totalDependencies = dependencies.length,
+					totalResolved = 0,
+					results = [];
+
+				for(var j=0;j<totalDependencies;j++){
+					var dependency = dependencies[j];
+					var founded = false;
+					for(var i=0; i<totalDefines; i++){
+						var defineData = allDefines[i];
+						if(defineData.defined){
+							if(defineData.objectPath == dependency){
+								totalResolved++;
+								results.push(defineData.result);
+								founded = true;
+							}
+						}
+					}
+					if(!founded){
+						emptyDependencies.push(dependency);
 					}
 				}
-			}
-		}
-	}
+				if(totalResolved == totalDependencies){
+					testResolveData.resolved = true;
 
-	function testResolveDefined(defineData){
-		var definedDependenciesCount = 0;
-		var dependencies = defineData.dependencies;
-		var totalDependencies = dependencies.length;
-		var totalDefined = allDefined.length;
-		var dependenciesArray = [];
-		for(var k=0; k<totalDependencies; k++){
-			var dependencyClassPath = dependencies[k];
-			for(var j=0; j<totalDefined; j++){
-				var defined = allDefined[j];
-				var definedClassPath = defined.classPath;
-				if(definedClassPath == dependencyClassPath){
-					definedDependenciesCount++;
-					dependenciesArray.push(defined.result);
+					mark('Launching resolve for \'' + dependencies.join('\', \'') + '\'');
+
+					testCallback( testResolveData.handler, results, testResolveData.context );
+
+					allResolves.splice(k,1);
+					k-=1;
+
+				} else {
+					emptyResolves.push({
+						emptyDependencies: emptyDependencies
+					})
 				}
 			}
-		}
-		if(definedDependenciesCount == totalDependencies){
-
-			//console.log(' + Resolved ' + defineData.classPath );
-
-			defineData.defined = true;
-			defineData.result = defineData.targetPath[defineData.className] = testCallback( defineData.handler, dependenciesArray, null );
-			allDefined.push(defineData);
-			testResolveHandlers();
-			testResolveDefines();
 		}
 	}
 
 	function testResolveDefines(){
+		emptyDefines = [];
 		var totalDefines = allDefines.length;
 		for(var k=0; k<totalDefines; k++){
-			var defineData = allDefines[k];
-			if(!defineData.defined){
-				testResolveDefined(defineData);
+			var testDefineData = allDefines[k];
+
+			if(!testDefineData.defined){
+				var emptyDependencies = [];
+
+				var definedDependenciesCount = 0,
+					dependencies = testDefineData.dependencies,
+					totalDependencies = dependencies.length,
+					totalDefines = allDefines.length,
+					results = [];
+
+				for(var j=0; j<totalDependencies; j++){
+					var dependencyObjectPath = dependencies[j];
+					var founded = false;
+					for(var i=0; i<totalDefines; i++){
+						var defineData = allDefines[i],
+							definedObjectPath = defineData.objectPath;
+						if(defineData.defined){
+							if(definedObjectPath == dependencyObjectPath){
+								definedDependenciesCount++;
+								results.push(defineData.result);
+								founded = true;
+							}
+						}
+					}
+					if(!founded){
+						emptyDependencies.push(dependencyObjectPath);
+					}
+				}
+
+				if(definedDependenciesCount == totalDependencies){
+					testDefineData.defined = true;
+					
+					mark('Resolved definition for \'' + testDefineData.objectPath + '\'');
+
+					if(testDefineData.targetPath[testDefineData.objectName]){ error(testDefineData.objectPath + ' already defined!'); }
+
+					var defineResult = testCallback( testDefineData.handler, results, factory );
+					
+					if(!isSet(defineResult)){
+						warn('Define handler for ' + testDefineData.objectPath + ' does not return anything');
+					}
+
+					testDefineData.result = testDefineData.targetPath[testDefineData.objectName] = defineResult;
+					
+					testResolveHandlers();
+					testResolveDefines();
+				} else {
+					emptyDefines.push({
+						objectPath : testDefineData.objectPath,
+						emptyDependencies : emptyDependencies
+					})
+				}
+
 			}
 		}
 	}
 
-	Class.define = function( classPath, dependencies, handler ){
-
-		//console.log('Added definition: ' + classPath );
-
-		lastDefinedClassPath = classPath;
-
-		var classPathArray = classPath.split('.');
-		var className = classPathArray.pop();
-
-		if(className == ''){
-			throw new Error('Hauts.Class.define must have className argument');
+	Class.define = function( objectPath, dependencies, handler ){
+		if( !isString(objectPath) ){
+			return error('No objectPath passed to define!')
 		}
-		if(isFunction(dependencies)){
+
+		lastDefinedObjectPath = objectPath;
+		var objectPathArray = objectPath.split('.'),
+			objectName = objectPathArray.pop();
+
+		if( objectName == '' ){
+			return error('define must have objectPath (objectName) argument!')
+		}
+
+		if( isFunction(dependencies) ){
 			handler = dependencies;
 			dependencies = [];
 		}
-		var pathArrayLength = classPathArray.length;
-		var targetPath = factory;
-		for (var k = 0; k < pathArrayLength; k++) {
-			var name = classPathArray[k];
+
+		if( !isSet(handler) ){
+			return error('No handler to define ' + objectPath + '!');
+		}
+
+		var pathArrayLength = objectPathArray.length,
+			targetPath = factory;
+
+		for (var k = 0; k<pathArrayLength; k++) {
+			var name = objectPathArray[k];
 			if(name != ''){
 				targetPath[name] = targetPath = targetPath[name] || createNamedObject( name );
 			}
 		}
+
+		log('Added definition for \'' + objectPath + '\'');
+		
 		allDefines.push({
 			defined: false,
-			classPath: classPath,
+			objectPath: objectPath,
 			targetPath: targetPath,
-			className: className,
+			objectName: objectName,
 			dependencies: dependencies,
 			handler: handler
 		});
+		
 		testResolveDefines();
-	}
-	Class.resolve = function( classPath, handler, context ){
-		if(isFunction(classPath)){
-			context = handler;
-			handler = classPath;
-			classPath = lastDefinedClassPath;
-		}
-		allResolves.push({ resolved: false, classPath: classPath, handler: handler, context: context })
-		testResolveHandlers()
+
+		return this;
 	}
 
+	Class.resolve = function(dependencies, handler, context){
+		if(isFunction(dependencies)){
+			context = handler;
+			handler = dependencies;
+			if(lastDefinedObjectPath){
+				dependencies = [lastDefinedObjectPath];
+			} else {
+				// Will not resolve null dependencies
+				warn('No dependencies for resolve');
+				return;
+			}
+		}
+		
+		if(!isArray(dependencies)){ dependencies = [dependencies]; }
+		
+		allResolves.push({
+			resolved: false,
+			dependencies: dependencies,
+			handler: handler,
+			context: isSet(context) ? context : factory
+		});
+		
+		log('Added resolve handler to \'' + dependencies.join('\', \'') + '\'');
+
+		testResolveHandlers();
+
+		return this;
+	}
+	Class.isDefined = function( dependencies ){
+		if(!isArray(dependencies)){ dependencies = [dependencies]; }
+		
+		var totalDependencies = dependencies.length;
+		var totalDefines = allDefines.length;
+		var totalDefined = 0;
+		
+		for(var k=0; k<totalDefines; k++){
+			var defineData = allDefines[k];
+			if(defineData.defined){
+				for(var j=0;j<totalDependencies;j++){
+					var dependency = dependencies[j];
+					if(dependency == defineData.objectPath){
+						totalDefined++;
+						if(totalDefined == totalDependencies){
+							return true;
+						}
+					}
+				}
+			}
+		}
+		return false;
+	}
+	Class.debugDefines = function(){
+		var totalEmptyDefines = emptyDefines.length;
+		if(totalEmptyDefines){
+			warn('Empty definitions:');
+			for(var k=0;k<totalEmptyDefines;k++){
+				var emptyDefine = emptyDefines[k];
+				log(emptyDefine.objectPath)
+				log('#' + (k+1) + '\t' + emptyDefine.emptyDependencies.join(', '))
+			}
+		} else {
+			mark('All definitions ok');
+		}
+		var totalEmptyResolves = emptyResolves.length;
+		if(totalEmptyResolves){
+			warn('Empty resolves:');
+			for(var k=0;k<totalEmptyResolves;k++){
+				var emptyResolve = emptyResolves[k];
+				log('#' + (k+1) + '\t' + emptyResolve.emptyDependencies.join(', '))
+			}
+		} else {
+			mark('All resolves ok');
+		}
+		return { emptyDefines: emptyDefines, emptyResolves: emptyResolves }
+	}
+
+
+	//
 	// Exports
+	//
+	var Hauts = factory.Hauts = factory.Hauts || new (function Hauts(){})();
 	Hauts.Class = Class;
-})(this);
+
+	if(IS_IN_NODE){
+		module.exports = Hauts;
+	}
+})((typeof module !== 'undefined' && module.exports && typeof global !== 'undefined') ? global : this || window );

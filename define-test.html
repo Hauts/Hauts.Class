@@ -4,8 +4,11 @@
 	<meta charset='utf-8'>
 	<meta name="viewport" content="width=device-width">
 	<script src='http://hauts.class/hauts.class.js'></script>
-	<script src='http://hauts.class/hauts.class.min.js'></script>
+	<!-- <script src='http://hauts.class/hauts.class.min.js'></script> -->
 	<script>
+		Hauts.Class.debug( true );
+	///*
+
 		Hauts.Class.define('SuperClass', ['Hauts.utils.test.UtilsClass', 'TestClass'], function( utils, testClass ){
 			console.log('SuperClass ok')
 			console.log(utils, testClass)
@@ -33,6 +36,7 @@
 			console.log('Resolve 1')
 			console.log( utils )
 		})
+		//*/
 	</script>
 </head>
 	<body></body>

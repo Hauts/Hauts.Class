@@ -1,7 +1,7 @@
 ﻿/*!
  * Hauts.Class
  *
- * Copyright 2015 Michael Chistyakov | Hauts | http://hauts.com
+ * Copyright 2015 Michael Chistyakov | Hauts | http://hauts.ru
  *
  * https://github.com/Hauts/Hauts.Class
  */
